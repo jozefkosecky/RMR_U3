@@ -28,14 +28,14 @@ MainWindow::MainWindow(QWidget *parent) :
 
     distanceLW = 0;
     distanceRW = 0;
-    leftWheel = 0;
+    delta_leftWheel = 0;
     encLeftWheel = 0;
-    rightWheel = 0;
+    delta_rightWheel = 0;
     encRightWheel = 0;
     x = 0;
     y = 0;
     tickToMeter = 0.000085292090497737556558;
-    d = 23; //m
+    d = 0.23; //m
     alfa = 0;
 
 
@@ -108,10 +108,10 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
         encRightWheel = robotdata.EncoderRight;
     }
 
-    leftWheel = robotdata.EncoderLeft - encLeftWheel;
-    rightWheel = robotdata.EncoderRight - encRightWheel;
-    distanceLW = tickToMeter*(leftWheel);
-    distanceRW = tickToMeter*(rightWheel);
+    delta_leftWheel = robotdata.EncoderLeft - encLeftWheel;
+    delta_rightWheel = robotdata.EncoderRight - encRightWheel;
+    distanceLW = tickToMeter*(delta_leftWheel);
+    distanceRW = tickToMeter*(delta_rightWheel);
 
 //    cout << "encLeftWheel: " << encLeftWheel << endl;
 //    cout << "robotdata.EncoderLeft: " << robotdata.EncoderLeft << endl;
@@ -141,12 +141,14 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 
 
     double delta_distance  = (distanceLW + distanceRW) / 2;
-    double gyro_angle = ((robotdata.GyroAngle/100) * 3.14)/180;
+    double gyro_angle = (((robotdata.GyroAngle)*3.14)/180);
     x = x + delta_distance  * cos(gyro_angle);
     y = y + delta_distance  * sin(gyro_angle);
 
-    cout << "x: " << x << endl;
-    cout << "y: " << y << endl;
+
+    cout << "x: " << x*100 << endl;
+    cout << "y: " << y*100 << endl;
+    cout << "robotdata.GyroAngle: " << robotdata.GyroAngle/100 << endl;
 
     cout << "--------------------\n\n" << endl;
 

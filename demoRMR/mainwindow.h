@@ -83,8 +83,8 @@ private:
 
      double distanceLW;
      double distanceRW;
-     short leftWheel;
-     short rightWheel;
+     short delta_leftWheel;
+     short delta_rightWheel;
      unsigned short encLeftWheel;
      unsigned short encRightWheel;
      double x;
