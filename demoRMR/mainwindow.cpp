@@ -141,7 +141,7 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 
 
     double delta_distance  = (distanceLW + distanceRW) / 2;
-    double gyro_angle = (((robotdata.GyroAngle)*3.14)/180);
+    double gyro_angle = (((robotdata.GyroAngle)*3.14)/180)/100;
     x = x + delta_distance  * cos(gyro_angle);
     y = y + delta_distance  * sin(gyro_angle);
 
