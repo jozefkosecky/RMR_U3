@@ -2,6 +2,8 @@
 #include "ui_mainwindow.h"
 #include <QPainter>
 #include <math.h>
+#include <iostream>
+#include <windows.h>
 ///Jozef Kosecky
 
 
@@ -228,7 +230,15 @@ void MainWindow::on_pushButton_9_clicked() //start button
     ///ked je vsetko nasetovane tak to tento prikaz spusti (ak nieco nieje setnute,tak to normalne nenastavi.cize ak napr nechcete kameru,vklude vsetky info o nej vymazte)
     robot.robotStart();
 
+    this_thread::sleep_for(chrono::milliseconds(500));
+    startMovingForward();
+}
 
+void MainWindow::startMovingForward(){
+    for (int velocity = 100; velocity <= 500; velocity = velocity + 100) {
+        robot.setTranslationSpeed(velocity);
+        this_thread::sleep_for(chrono::milliseconds(500));
+    }
 }
 
 void MainWindow::on_pushButton_2_clicked() //forward

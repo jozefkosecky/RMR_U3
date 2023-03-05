@@ -63,6 +63,8 @@ private slots:
     void on_pushButton_clicked();
     void getNewFrame();
 
+    void startMovingForward();
+
 private:
 
     //--skuste tu nic nevymazat... pridavajte co chcete, ale pri odoberani by sa mohol stat nejaky drobny problem, co bude vyhadzovat chyby
