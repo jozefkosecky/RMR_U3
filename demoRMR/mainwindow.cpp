@@ -110,15 +110,33 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
         encRightWheel = robotdata.EncoderRight;
     }
 
-    delta_leftWheel = robotdata.EncoderLeft - encLeftWheel;
-    delta_rightWheel = robotdata.EncoderRight - encRightWheel;
+    if( encLeftWheel > 60000 && robotdata.EncoderLeft <10000  )
+            delta_leftWheel=tickToMeter*(robotdata.EncoderLeft + (65530 - encLeftWheel));
+
+        else if (encLeftWheel < 10000 && robotdata.EncoderLeft > 60000)
+            delta_leftWheel=tickToMeter*(encLeftWheel + (65530 - robotdata.EncoderLeft));
+
+        else
+            delta_leftWheel=tickToMeter*(robotdata.EncoderLeft - encLeftWheel);
+
+        if( encRightWheel > 60000 && robotdata.EncoderRight <10000  )
+            delta_rightWheel=tickToMeter*(robotdata.EncoderRight + (65530 - encRightWheel));
+
+        else if (encRightWheel < 10000 && robotdata.EncoderRight > 60000)
+            delta_rightWheel=tickToMeter*(encRightWheel + (65530 - robotdata.EncoderRight));
+
+        else
+            delta_rightWheel=tickToMeter*(robotdata.EncoderRight - encRightWheel);
+
+    //delta_leftWheel = robotdata.EncoderLeft - encLeftWheel;
+    //delta_rightWheel = robotdata.EncoderRight - encRightWheel;
     distanceLW = tickToMeter*(delta_leftWheel);
     distanceRW = tickToMeter*(delta_rightWheel);
 
-//    cout << "encLeftWheel: " << encLeftWheel << endl;
-//    cout << "robotdata.EncoderLeft: " << robotdata.EncoderLeft << endl;
-//    cout << "encRightWheel: " << encRightWheel << endl;
-//    cout << "robotdata.EncoderRight: " << robotdata.EncoderRight << endl;
+    cout << "encLeftWheel: " << encLeftWheel << endl;
+    cout << "robotdata.EncoderLeft: " << robotdata.EncoderLeft << endl;
+    cout << "encRightWheel: " << encRightWheel << endl;
+    cout << "robotdata.EncoderRight: " << robotdata.EncoderRight << endl;
 
 //    cout << "left: " << leftWheel << endl;
 //    cout << "right: " << rightWheel << endl;
