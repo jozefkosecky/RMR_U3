@@ -28,18 +28,8 @@ MainWindow::MainWindow(QWidget *parent) :
     datacounter=0;
 
 
-    distanceLW = 0;
-    distanceRW = 0;
-    delta_leftWheel = 0;
-    encLeftWheel = 0;
-    delta_rightWheel = 0;
-    encRightWheel = 0;
-    x = 0;
-    y = 0;
-    tickToMeter = 0.000085292090497737556558;
-    d = 0.23; //m
-    alfa = 0;
 
+    init = true;
 
 }
 
@@ -103,60 +93,11 @@ void  MainWindow::setUiValues(double robotX,double robotY,double robotFi)
 /// vola sa vzdy ked dojdu nove data z robota. nemusite nic riesit, proste sa to stane
 int MainWindow::processThisRobot(TKobukiData robotdata)
 {
-    if(encLeftWheel == 0){
-        encLeftWheel = robotdata.EncoderLeft;
-    }
-    if(encRightWheel == 0){
-        encRightWheel = robotdata.EncoderRight;
+    if(init){
+        initData(robotdata);
     }
 
-    delta_leftWheel = robotdata.EncoderLeft - encLeftWheel;
-    delta_rightWheel = robotdata.EncoderRight - encRightWheel;
-    distanceLW = tickToMeter*(delta_leftWheel);
-    distanceRW = tickToMeter*(delta_rightWheel);
-
-//    cout << "encLeftWheel: " << encLeftWheel << endl;
-//    cout << "robotdata.EncoderLeft: " << robotdata.EncoderLeft << endl;
-//    cout << "encRightWheel: " << encRightWheel << endl;
-//    cout << "robotdata.EncoderRight: " << robotdata.EncoderRight << endl;
-
-//    cout << "left: " << leftWheel << endl;
-//    cout << "right: " << rightWheel << endl;
-//    cout << "robotdata.GyroAngle: " << (robotdata.GyroAngle/100) << endl;
-
-//    double alfa_new = ((robotdata.GyroAngle/100) * 3.14)/180;
-//    double temp = 0;
-//    if(leftWheel != 0 && rightWheel != 0){
-//        temp = ( (d*(distanceLW + distanceRW)) / (2*(distanceLW - distanceRW)));
-//    }
-//    cout << "temp: " << temp << endl;
-//    cout << "alfa_new: " << alfa_new << endl;
-
-//    cout << "sin(alfa_new): " << sin(alfa_new) << endl;
-//    cout << "sin(alfa): " << sin(alfa) << endl;
-
-//    cout << "distanceLW: " << distanceLW << endl;
-//    cout << "distanceRW: " << distanceRW << endl;
-
-//    x = x + temp *(sin(alfa_new) - sin(alfa));
-//    y = y - temp*(cos(alfa_new) - cos(alfa));
-
-
-    double delta_distance  = (distanceLW + distanceRW) / 2;
-    double gyro_angle = (((robotdata.GyroAngle)*3.14)/180)/100;
-    x = x + delta_distance  * cos(gyro_angle);
-    y = y + delta_distance  * sin(gyro_angle);
-
-
-    cout << "x: " << x*100 << endl;
-    cout << "y: " << y*100 << endl;
-    cout << "robotdata.GyroAngle: " << robotdata.GyroAngle/100 << endl;
-
-    cout << "--------------------\n\n" << endl;
-
-    encLeftWheel = robotdata.EncoderLeft;
-    encRightWheel = robotdata.EncoderRight;
-
+    calculateXY(robotdata);
 
     ///tu mozete robit s datami z robota
     /// ale nic vypoctovo narocne - to iste vlakno ktore cita data z robota
@@ -196,6 +137,140 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 
 }
 
+void MainWindow::robotMovement(TKobukiData robotdata){
+
+    if(!isStop){
+        if(!isCorrectRotation){
+            int rounded_correctRotation = std::floor(correctRotation);
+            cout << "correctRotation: " << correctRotation << " rounded_correctRotation: " << rounded_correctRotation << endl;
+            cout << "--------------------\n\n" << endl;
+            if((robotdata.GyroAngle/100 >= rounded_correctRotation - 1) && (robotdata.GyroAngle/100 <= rounded_correctRotation + 1)){
+                cout << "zastavujem" << endl;
+                robot.setTranslationSpeed(0);
+                isCorrectRotation = true;
+                isRobotMoving = false;
+
+            }
+            else if((robotdata.GyroAngle/100 < correctRotation) && !isRobotMoving){
+                cout << "tocim dolava" << endl;
+                robot.setRotationSpeed(0.25);
+                isRobotMoving = true;
+            }
+            else if((robotdata.GyroAngle/100 > correctRotation) && !isRobotMoving){
+                cout << "tocim doprava" << endl;
+                robot.setRotationSpeed(-0.25);
+                isRobotMoving = true;
+            }
+        }
+
+        if(isCorrectRotation){
+            int rounded_x = std::floor(x);
+            int rounded_y = std::floor(y);
+            cout << "x: " << x << " rounded_x: " << rounded_x << " x_destination: " << x_destination << endl;
+            cout << "y: " << y << " rounded_y: " << rounded_y << "y_destination: " << y_destination << endl;
+            cout << "--------------------\n\n" << endl;
+
+            if((x_destination >= rounded_x - 1) && (x_destination <= rounded_x + 1) &&
+                    (y_destination >= rounded_y - 1) && (y_destination <= rounded_y + 1)){
+                cout << "zastavujem" << endl;
+                robot.setTranslationSpeed(0);
+                isRobotMoving = false;
+            }
+            else if(!isRobotMoving){
+                cout << "idem rovno" << endl;
+                startMovingForward();
+                isRobotMoving = true;
+            }
+        }
+    }
+}
+
+double MainWindow::getRightOrientation(){
+    double deltaX = x_destination - x; // change in x-coordinate
+    double deltaY = y_destination - y; // change in y-coordinate
+    double angle = atan2(deltaY, deltaX) * 180 / PI; // angle in degrees
+//    if(angle < 0){
+//        angle += 360;
+//    }
+    return angle;
+}
+
+void MainWindow::calculateXY(TKobukiData robotdata){
+    delta_leftWheel = robotdata.EncoderLeft - encLeftWheel;
+    delta_rightWheel = robotdata.EncoderRight - encRightWheel;
+    distanceLW = tickToMeter*(delta_leftWheel);
+    distanceRW = tickToMeter*(delta_rightWheel);
+
+//    cout << "encLeftWheel: " << encLeftWheel << endl;
+//    cout << "robotdata.EncoderLeft: " << robotdata.EncoderLeft << endl;
+//    cout << "encRightWheel: " << encRightWheel << endl;
+//    cout << "robotdata.EncoderRight: " << robotdata.EncoderRight << endl;
+
+//    cout << "left: " << leftWheel << endl;
+//    cout << "right: " << rightWheel << endl;
+//    cout << "robotdata.GyroAngle: " << (robotdata.GyroAngle/100) << endl;
+
+//    double alfa_new = ((robotdata.GyroAngle/100) * 3.14)/180;
+//    double temp = 0;
+//    if(leftWheel != 0 && rightWheel != 0){
+//        temp = ( (d*(distanceLW + distanceRW)) / (2*(distanceLW - distanceRW)));
+//    }
+//    cout << "temp: " << temp << endl;
+//    cout << "alfa_new: " << alfa_new << endl;
+
+//    cout << "sin(alfa_new): " << sin(alfa_new) << endl;
+//    cout << "sin(alfa): " << sin(alfa) << endl;
+
+//    cout << "distanceLW: " << distanceLW << endl;
+//    cout << "distanceRW: " << distanceRW << endl;
+
+//    x = x + temp *(sin(alfa_new) - sin(alfa));
+//    y = y - temp*(cos(alfa_new) - cos(alfa));
+
+
+    double delta_distance  = (distanceLW + distanceRW) / 2;
+    double gyro_angle = (((robotdata.GyroAngle)*3.14)/180)/100;
+    if(gyro_angle < (PI)){
+        gyro_angle += 2*PI;
+    }
+    x = x + (delta_distance  * cos(gyro_angle))*100;
+    y = y + (delta_distance  * sin(gyro_angle))*100;
+
+
+    cout << "x: " << x << endl;
+    cout << "y: " << y << endl;
+    cout << "robotdata.GyroAngle: " << robotdata.GyroAngle/100 << endl;
+    cout << "--------------------\n\n" << endl;
+
+    encLeftWheel = robotdata.EncoderLeft;
+    encRightWheel = robotdata.EncoderRight;
+
+    robotMovement(robotdata);
+}
+
+void MainWindow::initData(TKobukiData robotdata){
+    encLeftWheel = robotdata.EncoderLeft;
+    encRightWheel = robotdata.EncoderRight;
+
+    distanceLW = 0;
+    distanceRW = 0;
+    delta_leftWheel = 0;
+    delta_rightWheel = 0;
+    x = 0;
+    y = 0;
+    tickToMeter = 0.000085292090497737556558;
+    d = 0.23; //m
+    alfa = 0;
+
+    x_destination = 0;
+    y_destination = 50;
+    correctRotation = getRightOrientation();
+    isCorrectRotation = false;
+    isStop = false;
+    isRobotMoving = false;
+    init = false;
+}
+
 ///toto je calback na data z lidaru, ktory ste podhodili robotu vo funkcii on_pushButton_9_clicked
 /// vola sa ked dojdu nove data z lidaru
 int MainWindow::processThisLidar(LaserMeasurement laserData)
@@ -230,12 +305,12 @@ void MainWindow::on_pushButton_9_clicked() //start button
     ///ked je vsetko nasetovane tak to tento prikaz spusti (ak nieco nieje setnute,tak to normalne nenastavi.cize ak napr nechcete kameru,vklude vsetky info o nej vymazte)
     robot.robotStart();
 
-    this_thread::sleep_for(chrono::milliseconds(500));
-    startMovingForward();
+//    this_thread::sleep_for(chrono::milliseconds(500));
+
 }
 
 void MainWindow::startMovingForward(){
-    for (int velocity = 100; velocity <= 500; velocity = velocity + 100) {
+    for (int velocity = 100; velocity <= 100; velocity = velocity + 100) {
         robot.setTranslationSpeed(velocity);
         this_thread::sleep_for(chrono::milliseconds(500));
     }
@@ -263,13 +338,12 @@ robot.setRotationSpeed(3.14159/2);
 void MainWindow::on_pushButton_5_clicked()//right
 {
 robot.setRotationSpeed(-3.14159/2);
-
 }
 
 void MainWindow::on_pushButton_4_clicked() //stop
 {
     robot.setTranslationSpeed(0);
-
+    isStop = true;
 }
 
 

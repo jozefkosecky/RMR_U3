@@ -64,6 +64,13 @@ private slots:
     void getNewFrame();
 
     void startMovingForward();
+//    void rotateRobotRight();
+//    void rotateRobotLeft();
+//    void startMovingBackward();
+    void robotMovement(TKobukiData robotdata);
+    double getRightOrientation();
+    void calculateXY(TKobukiData robotdata);
+    void initData(TKobukiData robotdata);
 
 private:
 
@@ -90,10 +97,18 @@ private:
      unsigned short encLeftWheel;
      unsigned short encRightWheel;
      double x;
+     double x_destination;
      double y;
+     double y_destination;
      double d;
      double alfa;
      double tickToMeter;
+     bool init;
+     double correctRotation;
+     bool isCorrectRotation;
+     bool isStop;
+     bool isRobotMoving;
+
 
 public slots:
      void setUiValues(double robotX,double robotY,double robotFi);
