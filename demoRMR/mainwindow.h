@@ -63,12 +63,14 @@ private slots:
     void on_pushButton_clicked();
     void getNewFrame();
 
-    void startMovingForward();
-//    void rotateRobotRight();
-//    void rotateRobotLeft();
-//    void startMovingBackward();
+    void movementForward(int speedForward);
+    void movementToRight();
+    void movementToLeft();
+    void movementBackwards();
+
     void robotMovement(TKobukiData robotdata);
     double getRightOrientation();
+    double getDistanceToEnd();
     void calculateXY(TKobukiData robotdata);
     void initData(TKobukiData robotdata);
 
@@ -103,11 +105,12 @@ private:
      double d;
      double alfa;
      double tickToMeter;
+     int speed;
      bool init;
-     double correctRotation;
      bool isCorrectRotation;
      bool isStop;
-     bool isRobotMoving;
+     bool isRobotMove;
+     bool isRobotRotate;
 
 
 public slots:

@@ -97,7 +97,7 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
         initData(robotdata);
     }
 
-    calculateXY(robotdata);
+    robotMovement(robotdata);
 
     ///tu mozete robit s datami z robota
     /// ale nic vypoctovo narocne - to iste vlakno ktore cita data z robota
@@ -139,50 +139,120 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 
 void MainWindow::robotMovement(TKobukiData robotdata){
 
+    calculateXY(robotdata);
+    double correctRotation = getRightOrientation();
+    double distanceToEnd = getDistanceToEnd();
+
+    int rounded_correctRotation = std::floor(correctRotation);
+    cout << "correctRotation: " << correctRotation << " rounded_correctRotation: " << rounded_correctRotation << endl;
+    cout << "--------------------\n\n" << endl;
+
+    if((robotdata.GyroAngle/100 >= correctRotation - 2) && (robotdata.GyroAngle/100 <= correctRotation + 2)){
+        isCorrectRotation = true;
+    }
+    else if(isRobotMove){
+        isCorrectRotation = false;
+    }
+
     if(!isStop){
         if(!isCorrectRotation){
-            int rounded_correctRotation = std::floor(correctRotation);
-            cout << "correctRotation: " << correctRotation << " rounded_correctRotation: " << rounded_correctRotation << endl;
-            cout << "--------------------\n\n" << endl;
-            if((robotdata.GyroAngle/100 >= rounded_correctRotation - 1) && (robotdata.GyroAngle/100 <= rounded_correctRotation + 1)){
-                cout << "zastavujem" << endl;
+            if(isRobotMove){
+                cout << "zastavujem pohyb pred rotaciou" << endl;
                 robot.setTranslationSpeed(0);
-                isCorrectRotation = true;
-                isRobotMoving = false;
-
+                speed = 0;
+                isRobotMove = false;
             }
-            else if((robotdata.GyroAngle/100 < correctRotation) && !isRobotMoving){
+
+            if((robotdata.GyroAngle/100 < correctRotation) && !isRobotRotate){
                 cout << "tocim dolava" << endl;
                 robot.setRotationSpeed(0.25);
-                isRobotMoving = true;
+                isRobotRotate = true;
             }
-            else if((robotdata.GyroAngle/100 > correctRotation) && !isRobotMoving){
+            else if((robotdata.GyroAngle/100 > correctRotation) && !isRobotRotate){
                 cout << "tocim doprava" << endl;
                 robot.setRotationSpeed(-0.25);
-                isRobotMoving = true;
+                isRobotRotate = true;
             }
         }
-
-        if(isCorrectRotation){
-            int rounded_x = std::floor(x);
-            int rounded_y = std::floor(y);
-            cout << "x: " << x << " rounded_x: " << rounded_x << " x_destination: " << x_destination << endl;
-            cout << "y: " << y << " rounded_y: " << rounded_y << "y_destination: " << y_destination << endl;
-            cout << "--------------------\n\n" << endl;
-
-            if((x_destination >= rounded_x - 1) && (x_destination <= rounded_x + 1) &&
-                    (y_destination >= rounded_y - 1) && (y_destination <= rounded_y + 1)){
-                cout << "zastavujem" << endl;
+        else{
+            if(isRobotRotate){
+                cout << "zastavujem rotaciu pred pohybom" << endl;
                 robot.setTranslationSpeed(0);
-                isRobotMoving = false;
+                speed = 0;
+                isRobotRotate = false;
             }
-            else if(!isRobotMoving){
-                cout << "idem rovno" << endl;
-                startMovingForward();
-                isRobotMoving = true;
+
+            if((x_destination >= x - 1) && (x_destination <= x + 1) &&
+                    (y_destination >= y - 1) && (y_destination <= y + 1)){
+                cout << "zastavujem pohyb" << endl;
+                robot.setTranslationSpeed(0);
+                speed = 0;
+                isRobotMove = false;
+            }
+            else{
+                if(speed == 0){
+                    speed = 100;
+                    movementForward(speed);
+                    isRobotMove = true;
+                }
+                else{
+                    if(distanceToEnd < 100 && speed > 100){
+                        cout << "Spomalujem" << endl;
+                        int distanceToEndTemo = std::floor(distanceToEnd);
+                        speed = distanceToEndTemo * 3;
+                        movementForward(speed);
+                    }
+                    else{
+                        if(speed < 500){
+                            cout << "Zrychlujem" << endl;
+                            speed += 50;
+                            movementForward(speed);
+                        }
+                    }
+                }
             }
         }
     }
+
+//    if(!isStop){
+//        if(!isCorrectRotation){
+//            if((robotdata.GyroAngle/100 < correctRotation) && !isRobotMoving){
+//                cout << "tocim dolava" << endl;
+//                robot.setRotationSpeed(0.25);
+//                isRobotMoving = true;
+//            }
+//            else if((robotdata.GyroAngle/100 > correctRotation) && !isRobotMoving){
+//                cout << "tocim doprava" << endl;
+//                robot.setRotationSpeed(-0.25);
+//                isRobotMoving = true;
+//            }
+//        }
+
+//        if(isCorrectRotation){
+//            int rounded_x = std::floor(x);
+//            int rounded_y = std::floor(y);
+//            cout << "x: " << x << " rounded_x: " << rounded_x << " x_destination: " << x_destination << endl;
+//            cout << "y: " << y << " rounded_y: " << rounded_y << "y_destination: " << y_destination << endl;
+//            cout << "--------------------\n\n" << endl;
+
+//            if((x_destination >= rounded_x - 1) && (x_destination <= rounded_x + 1) &&
+//                    (y_destination >= rounded_y - 1) && (y_destination <= rounded_y + 1)){
+//                cout << "zastavujem" << endl;
+//                robot.setTranslationSpeed(0);
+//                isRobotMoving = false;
+//            }
+//            else if(!isRobotMoving){
+//                cout << "idem rovno" << endl;
+//                movementForward();
+//                isRobotMoving = true;
+//            }
+//        }
+//    }
+}
+
+double MainWindow::getDistanceToEnd(){
+    double distance = std::sqrt(std::pow(x_destination - x, 2) + std::pow(y_destination - y, 2));
+    return distance;
 }
 
 double MainWindow::getRightOrientation(){
@@ -195,32 +265,32 @@ double MainWindow::getRightOrientation(){
     return angle;
 }
 
-<<<<<<< HEAD
+
 void MainWindow::calculateXY(TKobukiData robotdata){
     delta_leftWheel = robotdata.EncoderLeft - encLeftWheel;
     delta_rightWheel = robotdata.EncoderRight - encRightWheel;
-=======
-    if( encLeftWheel > 60000 && robotdata.EncoderLeft <10000  )
-            delta_leftWheel=tickToMeter*(robotdata.EncoderLeft + (65530 - encLeftWheel));
 
-        else if (encLeftWheel < 10000 && robotdata.EncoderLeft > 60000)
-            delta_leftWheel=tickToMeter*(encLeftWheel + (65530 - robotdata.EncoderLeft));
+//    if( encLeftWheel > 60000 && robotdata.EncoderLeft <10000  )
+//            delta_leftWheel=tickToMeter*(robotdata.EncoderLeft + (65530 - encLeftWheel));
 
-        else
-            delta_leftWheel=tickToMeter*(robotdata.EncoderLeft - encLeftWheel);
+//        else if (encLeftWheel < 10000 && robotdata.EncoderLeft > 60000)
+//            delta_leftWheel=tickToMeter*(encLeftWheel + (65530 - robotdata.EncoderLeft));
 
-        if( encRightWheel > 60000 && robotdata.EncoderRight <10000  )
-            delta_rightWheel=tickToMeter*(robotdata.EncoderRight + (65530 - encRightWheel));
+//        else
+//            delta_leftWheel=tickToMeter*(robotdata.EncoderLeft - encLeftWheel);
 
-        else if (encRightWheel < 10000 && robotdata.EncoderRight > 60000)
-            delta_rightWheel=tickToMeter*(encRightWheel + (65530 - robotdata.EncoderRight));
+//        if( encRightWheel > 60000 && robotdata.EncoderRight <10000  )
+//            delta_rightWheel=tickToMeter*(robotdata.EncoderRight + (65530 - encRightWheel));
 
-        else
-            delta_rightWheel=tickToMeter*(robotdata.EncoderRight - encRightWheel);
+//        else if (encRightWheel < 10000 && robotdata.EncoderRight > 60000)
+//            delta_rightWheel=tickToMeter*(encRightWheel + (65530 - robotdata.EncoderRight));
+
+//        else
+//            delta_rightWheel=tickToMeter*(robotdata.EncoderRight - encRightWheel);
 
     //delta_leftWheel = robotdata.EncoderLeft - encLeftWheel;
     //delta_rightWheel = robotdata.EncoderRight - encRightWheel;
->>>>>>> f09e5c424cf99abdbb266371653106e787a1fdc1
+
     distanceLW = tickToMeter*(delta_leftWheel);
     distanceRW = tickToMeter*(delta_rightWheel);
 
@@ -268,7 +338,6 @@ void MainWindow::calculateXY(TKobukiData robotdata){
     encLeftWheel = robotdata.EncoderLeft;
     encRightWheel = robotdata.EncoderRight;
 
-    robotMovement(robotdata);
 }
 
 void MainWindow::initData(TKobukiData robotdata){
@@ -285,12 +354,17 @@ void MainWindow::initData(TKobukiData robotdata){
     d = 0.23; //m
     alfa = 0;
 
-    x_destination = 0;
+    speed = 0;
+
+//    x_destination = 20;
+//    y_destination = 300;
+
+    x_destination = 20;
     y_destination = 50;
-    correctRotation = getRightOrientation();
     isCorrectRotation = false;
     isStop = false;
-    isRobotMoving = false;
+    isRobotMove = false;
+    isRobotRotate = false;
     init = false;
 }
 
@@ -332,11 +406,20 @@ void MainWindow::on_pushButton_9_clicked() //start button
 
 }
 
-void MainWindow::startMovingForward(){
-    for (int velocity = 100; velocity <= 100; velocity = velocity + 100) {
-        robot.setTranslationSpeed(velocity);
-        this_thread::sleep_for(chrono::milliseconds(500));
-    }
+void MainWindow::movementForward(int speedForward){
+    robot.setTranslationSpeed(speedForward);
+}
+
+void MainWindow::movementBackwards(){
+
+}
+
+void MainWindow::movementToRight(){
+
+}
+
+void MainWindow::movementToLeft(){
+
 }
 
 void MainWindow::on_pushButton_2_clicked() //forward
