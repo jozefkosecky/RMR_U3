@@ -137,6 +137,26 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 
 }
 
+void MainWindow::robotSlowdown(){
+    speed -= 20;
+    movementForward(speed);
+    if(speed <= 20){
+        cout << "zastavujem" << endl;
+        movementForward(0);
+        speed = 0;
+        isRobotMove = false;
+    }
+}
+
+void MainWindow::robotAcceleration(){
+    if(speed < 500){
+        cout << "Zrychlujem" << endl;
+        speed += 50;
+        movementForward(speed);
+        isRobotMove = true;
+    }
+}
+
 void MainWindow::robotMovement(TKobukiData robotdata){
 
     calculateXY(robotdata);
@@ -157,18 +177,16 @@ void MainWindow::robotMovement(TKobukiData robotdata){
     if(!isStop){
         if(!isCorrectRotation){
             if(isRobotMove){
-                cout << "zastavujem pohyb pred rotaciou" << endl;
-                robot.setTranslationSpeed(0);
-                speed = 0;
-                isRobotMove = false;
+                cout << "zastavujem pohyb pred rotaciou spomalenie" << endl;
+                robotSlowdown();
             }
 
-            if((robotdata.GyroAngle/100 < correctRotation) && !isRobotRotate){
+            if((robotdata.GyroAngle/100 < correctRotation) && !isRobotRotate && !isRobotMove){
                 cout << "tocim dolava" << endl;
                 robot.setRotationSpeed(0.25);
                 isRobotRotate = true;
             }
-            else if((robotdata.GyroAngle/100 > correctRotation) && !isRobotRotate){
+            else if((robotdata.GyroAngle/100 > correctRotation) && !isRobotRotate && !isRobotMove){
                 cout << "tocim doprava" << endl;
                 robot.setRotationSpeed(-0.25);
                 isRobotRotate = true;
@@ -177,7 +195,7 @@ void MainWindow::robotMovement(TKobukiData robotdata){
         else{
             if(isRobotRotate){
                 cout << "zastavujem rotaciu pred pohybom" << endl;
-                robot.setTranslationSpeed(0);
+                movementForward(0);
                 speed = 0;
                 isRobotRotate = false;
             }
@@ -185,31 +203,32 @@ void MainWindow::robotMovement(TKobukiData robotdata){
             if((x_destination >= x - 1) && (x_destination <= x + 1) &&
                     (y_destination >= y - 1) && (y_destination <= y + 1)){
                 cout << "zastavujem pohyb" << endl;
-                robot.setTranslationSpeed(0);
-                speed = 0;
-                isRobotMove = false;
+                robotSlowdown();
             }
             else{
-                if(speed == 0){
-                    speed = 100;
+                if(distanceToEnd < 50 && speed > 50){
+                    cout << "Spomalujem" << endl;
+                    int distanceToEndTemo = std::floor(distanceToEnd);
+                    speed = distanceToEndTemo * 3;
                     movementForward(speed);
-                    isRobotMove = true;
                 }
                 else{
-                    if(distanceToEnd < 100 && speed > 100){
-                        cout << "Spomalujem" << endl;
-                        int distanceToEndTemo = std::floor(distanceToEnd);
-                        speed = distanceToEndTemo * 3;
-                        movementForward(speed);
-                    }
-                    else{
-                        if(speed < 500){
-                            cout << "Zrychlujem" << endl;
-                            speed += 50;
-                            movementForward(speed);
-                        }
-                    }
+                    robotAcceleration();
                 }
+
+//                if(!isRobotRotate){
+//                    robotAcceleration();
+//                }
+
+//                if(speed == 0){
+//                    speed = 50;
+//                    movementForward(speed);
+//                    isRobotMove = true;
+//                }
+//                else{
+
+
+//                }
             }
         }
     }
@@ -359,8 +378,11 @@ void MainWindow::initData(TKobukiData robotdata){
 //    x_destination = 20;
 //    y_destination = 300;
 
-    x_destination = 20;
-    y_destination = 50;
+//    x_destination = 40;
+//    y_destination = 20;
+    x_destination = -20;
+    y_destination = 300;
+
     isCorrectRotation = false;
     isStop = false;
     isRobotMove = false;

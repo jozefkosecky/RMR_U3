@@ -67,6 +67,8 @@ private slots:
     void movementToRight();
     void movementToLeft();
     void movementBackwards();
+    void robotAcceleration();
+    void robotSlowdown();
 
     void robotMovement(TKobukiData robotdata);
     double getRightOrientation();
