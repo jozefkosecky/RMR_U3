@@ -126,7 +126,7 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
                 /// okno pocuva vo svojom slote a vasu premennu nastavi tak ako chcete. prikaz emit to presne takto spravi
                 /// viac o signal slotoch tu: https://doc.qt.io/qt-5/signalsandslots.html
         ///posielame sem nezmysli.. pohrajte sa nech sem idu zmysluplne veci
-        emit uiValuesChanged(robotdata.EncoderLeft,11,12);
+        emit uiValuesChanged(x,y,robotdata.GyroAngle/100.0);
         ///toto neodporucam na nejake komplikovane struktury.signal slot robi kopiu dat. radsej vtedy posielajte
         /// prazdny signal a slot bude vykreslovat strukturu (vtedy ju musite mat samozrejme ako member premmennu v mainwindow.ak u niekoho najdem globalnu premennu,tak bude cistit bludisko zubnou kefkou.. kefku dodam)
         /// vtedy ale odporucam pouzit mutex, aby sa vam nestalo ze budete pocas vypisovania prepisovat niekde inde
@@ -139,9 +139,9 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 }
 
 void MainWindow::robotSlowdown(){
-    speed -= 20;
+    speed -= 10;
     movementForward(speed);
-    if(speed <= 20){
+    if(speed <= 10){
         cout << "zastavujem" << endl;
         movementForward(0);
         speed = 0;
@@ -152,7 +152,7 @@ void MainWindow::robotSlowdown(){
 void MainWindow::robotAcceleration(){
     if(speed < 500){
         cout << "Zrychlujem" << endl;
-        speed += 50;
+        speed += 10;
         movementForward(speed);
         isRobotMove = true;
     }
@@ -164,14 +164,26 @@ void MainWindow::robotMovement(TKobukiData robotdata){
     double correctRotation = getRightOrientation();
     double distanceToEnd = getDistanceToEnd();
 
-    int rounded_correctRotation = std::floor(correctRotation);
-    cout << "correctRotation: " << correctRotation << " rounded_correctRotation: " << rounded_correctRotation << endl;
+
+    //double rotationSpeed=3.15*abs(correctRotation-gyro);
+
+    //cout << "rotationSpeed" << rotationSpeed << endl;
+//    double gyro_angle = (robotdata.GyroAngle)/100;
+
+    // pretecenie gyro
+//    if(gyro_angle < 0){
+//        gyro_angle += 360;
+//    }
+
+    cout << "correctRotation: " << correctRotation << "gyro_angle: "<< gyro << endl;
     cout << "--------------------\n\n" << endl;
 
-    if((robotdata.GyroAngle/100 >= correctRotation - 2) && (robotdata.GyroAngle/100 <= correctRotation + 2)){
+    if((gyro >= correctRotation - 2) && (gyro <= correctRotation + 2)){
+        cout << "zelane otocenie" << endl;
         isCorrectRotation = true;
     }
     else if(isRobotMove){
+        cout << "nezelane otocenie" << endl;
         isCorrectRotation = false;
     }
 
@@ -182,14 +194,14 @@ void MainWindow::robotMovement(TKobukiData robotdata){
                 robotSlowdown();
             }
 
-            if((robotdata.GyroAngle/100 < correctRotation) && !isRobotRotate && !isRobotMove){
+            if((gyro < correctRotation) && !isRobotMove){
                 cout << "tocim dolava" << endl;
-                robot.setRotationSpeed(0.25);
+                robot.setRotationSpeed(rotationSpeed);
                 isRobotRotate = true;
             }
-            else if((robotdata.GyroAngle/100 > correctRotation) && !isRobotRotate && !isRobotMove){
+            else if((gyro > correctRotation) && !isRobotMove){
                 cout << "tocim doprava" << endl;
-                robot.setRotationSpeed(-0.25);
+                robot.setRotationSpeed(-rotationSpeed);
                 isRobotRotate = true;
             }
         }
@@ -307,19 +319,21 @@ void MainWindow::calculateXY(TKobukiData robotdata){
 //    y = y - temp*(cos(alfa_new) - cos(alfa));
 
 
-    double delta_distance  = (distanceLW + distanceRW) / 2;
-    double gyro_angle = (((robotdata.GyroAngle)*3.14)/180)/100;
+    gyro = robotdata.GyroAngle/100 - gyroStart;
+    double delta_distance  = (distanceLW + distanceRW) / 2.0;
+    gyroRad = (((gyro)*PI)/180.0);
 
     // pretecenie gyro
-    if(gyro_angle < (PI)){
-        gyro_angle += 2*PI;
+    if(gyroRad < 0){
+        gyroRad += 2*PI;
     }
-    x = x + (delta_distance  * cos(gyro_angle))*100;
-    y = y + (delta_distance  * sin(gyro_angle))*100;
+    x = x + (delta_distance  * cos(gyroRad))*100;
+    y = y + (delta_distance  * sin(gyroRad))*100;
 
 
     cout << "x: " << x << endl;
     cout << "y: " << y << endl;
+    cout << "robotdata.GyroAngle: " << gyroRad << endl;
     cout << "robotdata.GyroAngle: " << robotdata.GyroAngle/100 << endl;
     cout << "--------------------\n\n" << endl;
 
@@ -344,13 +358,17 @@ void MainWindow::initData(TKobukiData robotdata){
 
     speed = 0;
 
-//    x_destination = 20;
-//    y_destination = 300;
+    x_destination = 0;
+    y_destination = 300;
 
 //    x_destination = 40;
 //    y_destination = 20;
-    x_destination = -20;
-    y_destination = 300;
+//    x_destination = 70;
+//    y_destination = 20;
+
+    gyroStart = robotdata.GyroAngle/100;
+    gyro = 0;
+    gyroRad = 0;
 
     isCorrectRotation = false;
     isStop = false;

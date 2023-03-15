@@ -114,6 +114,10 @@ private:
      bool isRobotMove;
      bool isRobotRotate;
 
+     double gyroStart;
+     double gyro;
+     double gyroRad;
+
 
 public slots:
      void setUiValues(double robotX,double robotY,double robotFi);
