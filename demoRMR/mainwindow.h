@@ -19,6 +19,7 @@
 //#include "rplidar.h"
 
 #include "robot.h"
+#include "pid_controller.h"
 
 
 namespace Ui {
@@ -114,9 +115,17 @@ private:
      bool isRobotMove;
      bool isRobotRotate;
 
+     double deadbandRotation;
+     int xArray[5];
+     int yArray[5];
+
+     int pointReached;
+
      double gyroStart;
      double gyro;
      double gyroRad;
+
+    PIDController controller;
 
 
 public slots:

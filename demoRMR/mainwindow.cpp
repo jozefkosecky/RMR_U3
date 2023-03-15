@@ -4,16 +4,18 @@
 #include <math.h>
 #include <iostream>
 #include <windows.h>
+#include <cmath>
+#include "pid_controller.h"
 ///Jozef Kosecky, Peter Dobias
 
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow)
+    ui(new Ui::MainWindow),
+    controller(0.5, 0.1, 0.2, 0.01,0.05)
 {
-
     //tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
-//    ipaddress="192.168.1.12"; //192.168.1.11 127.0.0.1
+//    ipaddress="192.168.1.11"; //192.168.1.11 127.0.0.1
     ipaddress="127.0.0.1";
   //  cap.open("http://192.168.1.11:8000/stream.mjpg");
     ui->setupUi(this);
@@ -156,6 +158,9 @@ void MainWindow::robotAcceleration(){
         movementForward(speed);
         isRobotMove = true;
     }
+    else{
+        speed = 500;
+    }
 }
 
 void MainWindow::robotMovement(TKobukiData robotdata){
@@ -164,26 +169,26 @@ void MainWindow::robotMovement(TKobukiData robotdata){
     double correctRotation = getRightOrientation();
     double distanceToEnd = getDistanceToEnd();
 
+    cout << "correctRotation: " << correctRotation << "gyro_angle: "<< gyroRad << endl;
+    cout << "x_destination: " << x_destination << "y_destination: "<< y_destination << endl;
 
-    //double rotationSpeed=3.15*abs(correctRotation-gyro);
 
-    //cout << "rotationSpeed" << rotationSpeed << endl;
-//    double gyro_angle = (robotdata.GyroAngle)/100;
+    // Update the control output based on the measured value
+    double output = controller.Update(correctRotation, gyroRad);
 
-    // pretecenie gyro
-//    if(gyro_angle < 0){
-//        gyro_angle += 360;
-//    }
+    // Convert the control output to motor speed
+    double rotationSpeed = max(-(3.14159/2), min((3.14159/2), output));
 
-    cout << "correctRotation: " << correctRotation << "gyro_angle: "<< gyro << endl;
-    cout << "--------------------\n\n" << endl;
+    cout << "rotationSpeed: " << rotationSpeed << endl;
 
-    if((gyro >= correctRotation - 2) && (gyro <= correctRotation + 2)){
+    if(std::abs(gyroRad - correctRotation) <= deadbandRotation){
         cout << "zelane otocenie" << endl;
+        deadbandRotation = 0.2;
         isCorrectRotation = true;
     }
-    else if(isRobotMove){
+    else{
         cout << "nezelane otocenie" << endl;
+        deadbandRotation = 0.02;
         isCorrectRotation = false;
     }
 
@@ -194,14 +199,14 @@ void MainWindow::robotMovement(TKobukiData robotdata){
                 robotSlowdown();
             }
 
-            if((gyro < correctRotation) && !isRobotMove){
+            if((rotationSpeed >= 0.0) && !isRobotMove){
                 cout << "tocim dolava" << endl;
                 robot.setRotationSpeed(rotationSpeed);
                 isRobotRotate = true;
             }
-            else if((gyro > correctRotation) && !isRobotMove){
+            else if((rotationSpeed < 0.0) && !isRobotMove){
                 cout << "tocim doprava" << endl;
-                robot.setRotationSpeed(-rotationSpeed);
+                robot.setRotationSpeed(rotationSpeed);
                 isRobotRotate = true;
             }
         }
@@ -213,10 +218,20 @@ void MainWindow::robotMovement(TKobukiData robotdata){
                 isRobotRotate = false;
             }
 
-            if((x_destination >= x - 1) && (x_destination <= x + 1) &&
-                    (y_destination >= y - 1) && (y_destination <= y + 1)){
+            if((x_destination >= x - 2.5) && (x_destination <= x + 2.5) &&
+                    (y_destination >= y - 2.5) && (y_destination <= y + 2.5)){
                 cout << "zastavujem pohyb" << endl;
                 robotSlowdown();
+                if(speed == 0){
+                    pointReached++;
+                    if(pointReached < 5){
+                        x_destination = xArray[pointReached];
+                        y_destination = yArray[pointReached];
+                    }
+                    else{
+                       isStop = true;
+                    }
+                }
             }
             else{
                 if(distanceToEnd < 50 && speed > 50){
@@ -231,41 +246,7 @@ void MainWindow::robotMovement(TKobukiData robotdata){
             }
         }
     }
-
-//    if(!isStop){
-//        if(!isCorrectRotation){
-//            if((robotdata.GyroAngle/100 < correctRotation) && !isRobotMoving){
-//                cout << "tocim dolava" << endl;
-//                robot.setRotationSpeed(0.25);
-//                isRobotMoving = true;
-//            }
-//            else if((robotdata.GyroAngle/100 > correctRotation) && !isRobotMoving){
-//                cout << "tocim doprava" << endl;
-//                robot.setRotationSpeed(-0.25);
-//                isRobotMoving = true;
-//            }
-//        }
-
-//        if(isCorrectRotation){
-//            int rounded_x = std::floor(x);
-//            int rounded_y = std::floor(y);
-//            cout << "x: " << x << " rounded_x: " << rounded_x << " x_destination: " << x_destination << endl;
-//            cout << "y: " << y << " rounded_y: " << rounded_y << "y_destination: " << y_destination << endl;
-//            cout << "--------------------\n\n" << endl;
-
-//            if((x_destination >= rounded_x - 1) && (x_destination <= rounded_x + 1) &&
-//                    (y_destination >= rounded_y - 1) && (y_destination <= rounded_y + 1)){
-//                cout << "zastavujem" << endl;
-//                robot.setTranslationSpeed(0);
-//                isRobotMoving = false;
-//            }
-//            else if(!isRobotMoving){
-//                cout << "idem rovno" << endl;
-//                movementForward();
-//                isRobotMoving = true;
-//            }
-//        }
-//    }
+    cout << "--------------------\n" << endl;
 }
 
 double MainWindow::getDistanceToEnd(){
@@ -277,10 +258,18 @@ double MainWindow::getRightOrientation(){
     double deltaX = x_destination - x; // change in x-coordinate
     double deltaY = y_destination - y; // change in y-coordinate
     double angle = atan2(deltaY, deltaX) * 180 / PI; // angle in degrees
-//    if(angle < 0){
-//        angle += 360;
-//    }
-    return angle;
+    if(angle < 0){
+        angle += 360;
+    }
+
+    int rounded = std::round(angle);
+
+    if(rounded == 360){
+        angle = 0;
+    }
+
+    cout << "correctRotation: " << angle << "gyro_angle: "<< gyro << endl;
+    return (((angle)*PI)/180.0);
 }
 
 
@@ -291,33 +280,6 @@ void MainWindow::calculateXY(TKobukiData robotdata){
 
     distanceLW = tickToMeter*(delta_leftWheel);
     distanceRW = tickToMeter*(delta_rightWheel);
-
-    cout << "encLeftWheel: " << encLeftWheel << endl;
-    cout << "robotdata.EncoderLeft: " << robotdata.EncoderLeft << endl;
-    cout << "encRightWheel: " << encRightWheel << endl;
-    cout << "robotdata.EncoderRight: " << robotdata.EncoderRight << endl;
-
-//    cout << "left: " << leftWheel << endl;
-//    cout << "right: " << rightWheel << endl;
-//    cout << "robotdata.GyroAngle: " << (robotdata.GyroAngle/100) << endl;
-
-//    double alfa_new = ((robotdata.GyroAngle/100) * 3.14)/180;
-//    double temp = 0;
-//    if(leftWheel != 0 && rightWheel != 0){
-//        temp = ( (d*(distanceLW + distanceRW)) / (2*(distanceLW - distanceRW)));
-//    }
-//    cout << "temp: " << temp << endl;
-//    cout << "alfa_new: " << alfa_new << endl;
-
-//    cout << "sin(alfa_new): " << sin(alfa_new) << endl;
-//    cout << "sin(alfa): " << sin(alfa) << endl;
-
-//    cout << "distanceLW: " << distanceLW << endl;
-//    cout << "distanceRW: " << distanceRW << endl;
-
-//    x = x + temp *(sin(alfa_new) - sin(alfa));
-//    y = y - temp*(cos(alfa_new) - cos(alfa));
-
 
     gyro = robotdata.GyroAngle/100 - gyroStart;
     double delta_distance  = (distanceLW + distanceRW) / 2.0;
@@ -331,11 +293,9 @@ void MainWindow::calculateXY(TKobukiData robotdata){
     y = y + (delta_distance  * sin(gyroRad))*100;
 
 
-    cout << "x: " << x << endl;
-    cout << "y: " << y << endl;
     cout << "robotdata.GyroAngle: " << gyroRad << endl;
     cout << "robotdata.GyroAngle: " << robotdata.GyroAngle/100 << endl;
-    cout << "--------------------\n\n" << endl;
+
 
     encLeftWheel = robotdata.EncoderLeft;
     encRightWheel = robotdata.EncoderRight;
@@ -358,13 +318,30 @@ void MainWindow::initData(TKobukiData robotdata){
 
     speed = 0;
 
-    x_destination = 0;
-    y_destination = 300;
+    xArray[0] = 0;
+    xArray[1] = 0;
+    xArray[2] = 0;
+    xArray[3] = 150;
+    xArray[4] = 150;
 
+    yArray[0] = 300;
+    yArray[1] = 0;
+    yArray[2] = 300;
+    yArray[3] = 300;
+    yArray[4] = 350;
+
+    pointReached = 0;
+
+    x_destination = xArray[pointReached];
+    y_destination = yArray[pointReached];
+
+
+    deadbandRotation = 0.02;
 //    x_destination = 40;
 //    y_destination = 20;
 //    x_destination = 70;
 //    y_destination = 20;
+
 
     gyroStart = robotdata.GyroAngle/100;
     gyro = 0;
