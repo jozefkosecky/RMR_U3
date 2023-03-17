@@ -114,6 +114,11 @@ private:
      bool isStop;
      bool isRobotMove;
      bool isRobotRotate;
+     bool isConvertAngleRight;
+     bool isConvertAngleLeft;
+
+     double rightRotationAngle;
+     double leftRotationAngle;
 
      double deadbandRotation;
      int xArray[5];

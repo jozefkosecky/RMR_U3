@@ -12,11 +12,11 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    controller(0.5, 0.1, 0.2, 0.01,0.05)
+    controller(10, 0.1, 0.2, 0.01,0.05)
 {
     //tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
-//    ipaddress="192.168.1.11"; //192.168.1.11 127.0.0.1
-    ipaddress="127.0.0.1";
+    ipaddress="192.168.1.11"; //192.168.1.11 127.0.0.1
+//    ipaddress="127.0.0.1";
   //  cap.open("http://192.168.1.11:8000/stream.mjpg");
     ui->setupUi(this);
     datacounter=0;
@@ -141,9 +141,9 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 }
 
 void MainWindow::robotSlowdown(){
-    speed -= 10;
+    speed -= 5;
     movementForward(speed);
-    if(speed <= 10){
+    if(speed < 5){
         cout << "zastavujem" << endl;
         movementForward(0);
         speed = 0;
@@ -152,14 +152,23 @@ void MainWindow::robotSlowdown(){
 }
 
 void MainWindow::robotAcceleration(){
-    if(speed < 500){
+    if(speed <= 5){
+       cout << "Zrychlujem" << endl;
+       speed += 1;
+       movementForward(speed);
+       isRobotMove = true;
+    }
+    else if(speed <= 495){
         cout << "Zrychlujem" << endl;
-        speed += 10;
+        speed += 5;
         movementForward(speed);
         isRobotMove = true;
     }
     else{
+        cout << "Zrychlujem" << endl;
         speed = 500;
+        movementForward(speed);
+        isRobotMove = true;
     }
 }
 
@@ -169,9 +178,40 @@ void MainWindow::robotMovement(TKobukiData robotdata){
     double correctRotation = getRightOrientation();
     double distanceToEnd = getDistanceToEnd();
 
-    cout << "correctRotation: " << correctRotation << "gyro_angle: "<< gyroRad << endl;
+    cout << "correctRotation: " << correctRotation << "gyroRad: "<< gyroRad << endl;
     cout << "x_destination: " << x_destination << "y_destination: "<< y_destination << endl;
 
+    if(gyroRad < correctRotation){
+        rightRotationAngle = (2*PI) - correctRotation + gyroRad;
+        leftRotationAngle = correctRotation - gyroRad;
+
+        if(rightRotationAngle < leftRotationAngle && !isCorrectRotation){
+            isConvertAngleRight = true;
+        }
+    }
+    else{
+        leftRotationAngle = (2*PI) - gyroRad + correctRotation;
+        rightRotationAngle = gyroRad - correctRotation;
+
+        if(leftRotationAngle < rightRotationAngle && !isCorrectRotation){
+            isConvertAngleLeft = true;
+        }
+    }
+
+    if(isConvertAngleRight){
+        correctRotation -= (2*PI);
+        if(gyroRad > PI){
+            gyroRad -= (2*PI);
+        }
+        cout << "prepocet do prava: " << "correctRotation: " << correctRotation << "gyroRad: "<< gyroRad << endl;
+    }
+
+    if(isConvertAngleLeft){
+        if(gyroRad > PI){
+            gyroRad -= (2*PI);
+        }
+        cout << "prepocet do lava: " << "correctRotation: " << correctRotation << "gyroRad: "<< gyroRad << endl;
+    }
 
     // Update the control output based on the measured value
     double output = controller.Update(correctRotation, gyroRad);
@@ -181,14 +221,16 @@ void MainWindow::robotMovement(TKobukiData robotdata){
 
     cout << "rotationSpeed: " << rotationSpeed << endl;
 
-    if(std::abs(gyroRad - correctRotation) <= deadbandRotation){
+    if(rightRotationAngle <= deadbandRotation || leftRotationAngle <= deadbandRotation){
         cout << "zelane otocenie" << endl;
         deadbandRotation = 0.2;
         isCorrectRotation = true;
+        isConvertAngleRight = false;
+        isConvertAngleLeft = false;
     }
     else{
         cout << "nezelane otocenie" << endl;
-        deadbandRotation = 0.02;
+        deadbandRotation = 0.01;
         isCorrectRotation = false;
     }
 
@@ -224,7 +266,7 @@ void MainWindow::robotMovement(TKobukiData robotdata){
                 robotSlowdown();
                 if(speed == 0){
                     pointReached++;
-                    if(pointReached < 5){
+                    if(pointReached < 3){
                         x_destination = xArray[pointReached];
                         y_destination = yArray[pointReached];
                     }
@@ -281,10 +323,17 @@ void MainWindow::calculateXY(TKobukiData robotdata){
     distanceLW = tickToMeter*(delta_leftWheel);
     distanceRW = tickToMeter*(delta_rightWheel);
 
+    cout << "robotdata.GyroAngle/100: " << robotdata.GyroAngle/100 << " gyroStart: "<< gyroStart << endl;
+
     gyro = robotdata.GyroAngle/100 - gyroStart;
     double delta_distance  = (distanceLW + distanceRW) / 2.0;
     gyroRad = (((gyro)*PI)/180.0);
 
+    cout << "gyro: " << gyroRad << endl;
+
+    if(gyro < 0){
+        gyro += 360;
+    }
     // pretecenie gyro
     if(gyroRad < 0){
         gyroRad += 2*PI;
@@ -293,7 +342,8 @@ void MainWindow::calculateXY(TKobukiData robotdata){
     y = y + (delta_distance  * sin(gyroRad))*100;
 
 
-    cout << "robotdata.GyroAngle: " << gyroRad << endl;
+    cout << "gyro: " << gyroRad << endl;
+    cout << "gyroRad: " << gyroRad << endl;
     cout << "robotdata.GyroAngle: " << robotdata.GyroAngle/100 << endl;
 
 
@@ -318,16 +368,28 @@ void MainWindow::initData(TKobukiData robotdata){
 
     speed = 0;
 
-    xArray[0] = 0;
+//    xArray[0] = 0;
+//    xArray[1] = 150;
+//    xArray[2] = 150;
+//    xArray[3] = 0;
+//    xArray[4] = 150;
+
+//    yArray[0] = 250;
+//    yArray[1] = 250;
+//    yArray[2] = 0;
+//    yArray[3] = 0;
+//    yArray[4] = 350;
+
+    xArray[0] = 250;
     xArray[1] = 0;
     xArray[2] = 0;
-    xArray[3] = 150;
+    xArray[3] = 0;
     xArray[4] = 150;
 
-    yArray[0] = 300;
-    yArray[1] = 0;
-    yArray[2] = 300;
-    yArray[3] = 300;
+    yArray[0] = 250;
+    yArray[1] = 250;
+    yArray[2] = 0;
+    yArray[3] = 0;
     yArray[4] = 350;
 
     pointReached = 0;
@@ -347,6 +409,8 @@ void MainWindow::initData(TKobukiData robotdata){
     gyro = 0;
     gyroRad = 0;
 
+    isConvertAngleRight = false;
+    isConvertAngleLeft = false;
     isCorrectRotation = false;
     isStop = false;
     isRobotMove = false;
@@ -412,6 +476,8 @@ void MainWindow::on_pushButton_2_clicked() //forward
 {
     //pohyb dopredu
     robot.setTranslationSpeed(500);
+//    speed = 0;
+//    robotAcceleration();
 
 }
 
