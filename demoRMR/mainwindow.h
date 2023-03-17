@@ -131,6 +131,7 @@ private:
      double gyroRad;
 
     PIDController controller;
+    PIDController controllerMove;
 
 
 public slots:

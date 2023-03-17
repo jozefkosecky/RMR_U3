@@ -12,7 +12,8 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    controller(10, 0.1, 0.2, 0.01,0.05)
+    controller(10, 0.1, 0.2, 0.01,0.05),
+    controllerMove(0.7, 0.1, 0.2, 0.01,0.05)
 {
     //tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
     ipaddress="192.168.1.11"; //192.168.1.11 127.0.0.1
@@ -139,6 +140,8 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
     return 0;
 
 }
+
+
 
 void MainWindow::robotSlowdown(){
     speed -= 5;
@@ -283,7 +286,13 @@ void MainWindow::robotMovement(TKobukiData robotdata){
                     movementForward(speed);
                 }
                 else{
-                    robotAcceleration();
+                    //robotAcceleration();
+                    double outputMove = controllerMove.Update(distanceToEnd, speed);
+                    cout << "Zrychlujem" << endl;
+
+                    speed = max((0), min((500), outputMove));
+                    movementForward(speed);
+                    isRobotMove = true;
                 }
             }
         }
