@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <cmath>
 #include "pid_controller.h"
+#include "p_controller_movement.h"
 ///Jozef Kosecky, Peter Dobias
 
 
@@ -13,7 +14,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     controller(10, 0.1, 0.2, 0.01,0.05),
-    controllerMove(0.7, 0.1, 0.2, 0.01,0.05)
+    controllerMove(7.5, 0.1, 0.2, 0.01,0.05,500)
 {
     //tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
     ipaddress="192.168.1.11"; //192.168.1.11 127.0.0.1
@@ -26,12 +27,7 @@ MainWindow::MainWindow(QWidget *parent) :
     actIndex=-1;
     useCamera1=false;
 
-
-
-
     datacounter=0;
-
-
 
     init = true;
 
@@ -150,6 +146,7 @@ void MainWindow::robotSlowdown(){
         cout << "zastavujem" << endl;
         movementForward(0);
         speed = 0;
+        controllerMove.UpdateOutputToZero();
         isRobotMove = false;
     }
 }
@@ -260,18 +257,20 @@ void MainWindow::robotMovement(TKobukiData robotdata){
                 cout << "zastavujem rotaciu pred pohybom" << endl;
                 movementForward(0);
                 speed = 0;
+                controllerMove.UpdateOutputToZero();
                 isRobotRotate = false;
             }
 
             if((x_destination >= x - 2.5) && (x_destination <= x + 2.5) &&
                     (y_destination >= y - 2.5) && (y_destination <= y + 2.5)){
                 cout << "zastavujem pohyb" << endl;
-                robotSlowdown();
+//                robotSlowdown();
                 if(speed == 0){
                     pointReached++;
                     if(pointReached < 3){
                         x_destination = xArray[pointReached];
                         y_destination = yArray[pointReached];
+                        distance = getDistanceToEnd();
                     }
                     else{
                        isStop = true;
@@ -279,25 +278,37 @@ void MainWindow::robotMovement(TKobukiData robotdata){
                 }
             }
             else{
-                if(distanceToEnd < 50 && speed > 50){
-                    cout << "Spomalujem" << endl;
-                    int distanceToEndTemo = std::floor(distanceToEnd);
-                    speed = distanceToEndTemo * 3;
-                    movementForward(speed);
-                }
-                else{
-                    //robotAcceleration();
-                    double outputMove = controllerMove.Update(distanceToEnd, speed);
-                    cout << "Zrychlujem" << endl;
+                //robotAcceleration();
+                double outputMove = controllerMove.Update(0, distanceToEnd);
+                cout << "Zrychlujem" << endl;
+                cout << "distance: " << distance << "distanceToEnd: "<< distanceToEnd << endl;
 
-                    speed = max((0), min((500), outputMove));
-                    movementForward(speed);
-                    isRobotMove = true;
-                }
+                speed = max((50), min((500), std::abs(outputMove)));
+                cout << "speed: " << speed << endl;
+                movementForward(speed);
+                isRobotMove = true;
             }
         }
     }
     cout << "--------------------\n" << endl;
+
+//    if(distanceToEnd < 50 && speed > 50){
+//        cout << "Spomalujem" << endl;
+//        int distanceToEndTemo = std::floor(distanceToEnd);
+//        speed = distanceToEndTemo * 3;
+//        movementForward(speed);
+//    }
+//    else{
+//        //robotAcceleration();
+//        double outputMove = controllerMove.Update(0, distanceToEnd);
+//        cout << "Zrychlujem" << endl;
+//        cout << "distance: " << distance << "distanceToEnd: "<< distanceToEnd << endl;
+
+//        speed = max((0), min((500), std::abs(outputMove)));
+//        cout << "speed: " << speed << endl;
+//        movementForward(speed);
+//        isRobotMove = true;
+//    }
 }
 
 double MainWindow::getDistanceToEnd(){
@@ -406,6 +417,7 @@ void MainWindow::initData(TKobukiData robotdata){
     x_destination = xArray[pointReached];
     y_destination = yArray[pointReached];
 
+    distance = getDistanceToEnd();
 
     deadbandRotation = 0.02;
 //    x_destination = 40;

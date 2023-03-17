@@ -20,9 +20,11 @@ LIBS += -L../bin -lrobot
 
 SOURCES += main.cpp\
         mainwindow.cpp \
+        p_controller_movement.cpp \
         pid_controller.cpp
 
 HEADERS  += mainwindow.h \
+    p_controller_movement.h \
     pid_controller.h
 
 FORMS    += mainwindow.ui

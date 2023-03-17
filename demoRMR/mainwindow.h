@@ -20,6 +20,7 @@
 
 #include "robot.h"
 #include "pid_controller.h"
+#include "p_controller_movement.h"
 
 
 namespace Ui {
@@ -126,12 +127,14 @@ private:
 
      int pointReached;
 
+     double distance;
+
      double gyroStart;
      double gyro;
      double gyroRad;
 
     PIDController controller;
-    PIDController controllerMove;
+    PControllerMovement controllerMove;
 
 
 public slots:
