@@ -6,19 +6,14 @@
 
 class PControllerMovement {
 public:
-    PControllerMovement(double kp, double ki, double kd, double dt, double deadband, int rampRate);
+    PControllerMovement(double kp, double dt, int rampRate);
 
     double Update(double setpoint, double measured_value);
     void UpdateOutputToZero();
 
 private:
     double kp_;
-    double ki_;
-    double kd_;
     double dt_;
-    double deadband_;
-    double integral_;
-    double prev_error_;
     double prev_output_;
     int rampRate_;
 };

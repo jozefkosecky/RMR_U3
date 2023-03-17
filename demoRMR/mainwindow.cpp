@@ -5,7 +5,7 @@
 #include <iostream>
 #include <windows.h>
 #include <cmath>
-#include "pid_controller.h"
+#include "p_controller_rotation.h"
 #include "p_controller_movement.h"
 ///Jozef Kosecky, Peter Dobias
 
@@ -13,8 +13,8 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    controller(10, 0.1, 0.2, 0.01,0.05),
-    controllerMove(7.5, 0.1, 0.2, 0.01,0.05,500)
+    controllerRotation(10, 0.01),
+    controllerMove(7.5, 0.01, 500)
 {
     //tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
     ipaddress="192.168.1.11"; //192.168.1.11 127.0.0.1
@@ -30,7 +30,6 @@ MainWindow::MainWindow(QWidget *parent) :
     datacounter=0;
 
     init = true;
-
 }
 
 MainWindow::~MainWindow()
@@ -142,45 +141,21 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 void MainWindow::robotSlowdown(){
     speed -= 5;
     movementForward(speed);
-    if(speed < 5){
+    if(speed < 0){
         cout << "zastavujem" << endl;
-        movementForward(0);
-        speed = 0;
-        controllerMove.UpdateOutputToZero();
-        isRobotMove = false;
+        stopRobot();
     }
 }
 
-void MainWindow::robotAcceleration(){
-    if(speed <= 5){
-       cout << "Zrychlujem" << endl;
-       speed += 1;
-       movementForward(speed);
-       isRobotMove = true;
-    }
-    else if(speed <= 495){
-        cout << "Zrychlujem" << endl;
-        speed += 5;
-        movementForward(speed);
-        isRobotMove = true;
-    }
-    else{
-        cout << "Zrychlujem" << endl;
-        speed = 500;
-        movementForward(speed);
-        isRobotMove = true;
-    }
+void MainWindow::stopRobot(){
+    movementForward(0);
+    speed = 0;
+    controllerMove.UpdateOutputToZero();
+    isRobotMove = false;
 }
 
-void MainWindow::robotMovement(TKobukiData robotdata){
-
-    calculateXY(robotdata);
-    double correctRotation = getRightOrientation();
-    double distanceToEnd = getDistanceToEnd();
-
-    cout << "correctRotation: " << correctRotation << "gyroRad: "<< gyroRad << endl;
-    cout << "x_destination: " << x_destination << "y_destination: "<< y_destination << endl;
-
+void MainWindow::calculateShortestRotation(double correctRotation){
+    //get difference between two angles
     if(gyroRad < correctRotation){
         rightRotationAngle = (2*PI) - correctRotation + gyroRad;
         leftRotationAngle = correctRotation - gyroRad;
@@ -193,11 +168,13 @@ void MainWindow::robotMovement(TKobukiData robotdata){
         leftRotationAngle = (2*PI) - gyroRad + correctRotation;
         rightRotationAngle = gyroRad - correctRotation;
 
+
         if(leftRotationAngle < rightRotationAngle && !isCorrectRotation){
             isConvertAngleLeft = true;
         }
     }
 
+    //We work with 360 degrees, but when we want use shortest path and this path pass through 0 degrees, we must convert circle from <0,360> to <0,180> and <-180,0>
     if(isConvertAngleRight){
         correctRotation -= (2*PI);
         if(gyroRad > PI){
@@ -212,9 +189,22 @@ void MainWindow::robotMovement(TKobukiData robotdata){
         }
         cout << "prepocet do lava: " << "correctRotation: " << correctRotation << "gyroRad: "<< gyroRad << endl;
     }
+}
+
+
+void MainWindow::robotMovement(TKobukiData robotdata){
+
+    calculateXY(robotdata);
+    double correctRotation = getRightOrientation();
+    double distanceToEnd = getDistanceToEnd();
+
+    cout << "correctRotation: " << correctRotation << "gyroRad: "<< gyroRad << endl;
+    cout << "x_destination: " << x_destination << "y_destination: "<< y_destination << endl;
+
+    calculateShortestRotation(correctRotation);
 
     // Update the control output based on the measured value
-    double output = controller.Update(correctRotation, gyroRad);
+    double output = controllerRotation.Update(correctRotation, gyroRad);
 
     // Convert the control output to motor speed
     double rotationSpeed = max(-(3.14159/2), min((3.14159/2), output));
@@ -255,30 +245,25 @@ void MainWindow::robotMovement(TKobukiData robotdata){
         else{
             if(isRobotRotate){
                 cout << "zastavujem rotaciu pred pohybom" << endl;
-                movementForward(0);
-                speed = 0;
-                controllerMove.UpdateOutputToZero();
-                isRobotRotate = false;
+                stopRobot();
             }
 
             if((x_destination >= x - 2.5) && (x_destination <= x + 2.5) &&
                     (y_destination >= y - 2.5) && (y_destination <= y + 2.5)){
                 cout << "zastavujem pohyb" << endl;
-//                robotSlowdown();
-                if(speed == 0){
-                    pointReached++;
-                    if(pointReached < 3){
-                        x_destination = xArray[pointReached];
-                        y_destination = yArray[pointReached];
-                        distance = getDistanceToEnd();
-                    }
-                    else{
-                       isStop = true;
-                    }
+                stopRobot();
+
+                pointReached++;
+                if(pointReached < 3){
+                    x_destination = xArray[pointReached];
+                    y_destination = yArray[pointReached];
+                    distance = getDistanceToEnd();
+                }
+                else{
+                   isStop = true;
                 }
             }
             else{
-                //robotAcceleration();
                 double outputMove = controllerMove.Update(0, distanceToEnd);
                 cout << "Zrychlujem" << endl;
                 cout << "distance: " << distance << "distanceToEnd: "<< distanceToEnd << endl;
@@ -291,24 +276,6 @@ void MainWindow::robotMovement(TKobukiData robotdata){
         }
     }
     cout << "--------------------\n" << endl;
-
-//    if(distanceToEnd < 50 && speed > 50){
-//        cout << "Spomalujem" << endl;
-//        int distanceToEndTemo = std::floor(distanceToEnd);
-//        speed = distanceToEndTemo * 3;
-//        movementForward(speed);
-//    }
-//    else{
-//        //robotAcceleration();
-//        double outputMove = controllerMove.Update(0, distanceToEnd);
-//        cout << "Zrychlujem" << endl;
-//        cout << "distance: " << distance << "distanceToEnd: "<< distanceToEnd << endl;
-
-//        speed = max((0), min((500), std::abs(outputMove)));
-//        cout << "speed: " << speed << endl;
-//        movementForward(speed);
-//        isRobotMove = true;
-//    }
 }
 
 double MainWindow::getDistanceToEnd(){
@@ -388,6 +355,7 @@ void MainWindow::initData(TKobukiData robotdata){
 
     speed = 0;
 
+    //stvorec
 //    xArray[0] = 0;
 //    xArray[1] = 150;
 //    xArray[2] = 150;
@@ -400,6 +368,7 @@ void MainWindow::initData(TKobukiData robotdata){
 //    yArray[3] = 0;
 //    yArray[4] = 350;
 
+    //trojuholnik
     xArray[0] = 250;
     xArray[1] = 0;
     xArray[2] = 0;
@@ -413,18 +382,10 @@ void MainWindow::initData(TKobukiData robotdata){
     yArray[4] = 350;
 
     pointReached = 0;
-
     x_destination = xArray[pointReached];
     y_destination = yArray[pointReached];
-
     distance = getDistanceToEnd();
-
     deadbandRotation = 0.02;
-//    x_destination = 40;
-//    y_destination = 20;
-//    x_destination = 70;
-//    y_destination = 20;
-
 
     gyroStart = robotdata.GyroAngle/100;
     gyro = 0;
@@ -443,17 +404,13 @@ void MainWindow::initData(TKobukiData robotdata){
 /// vola sa ked dojdu nove data z lidaru
 int MainWindow::processThisLidar(LaserMeasurement laserData)
 {
-
-
     memcpy( &copyOfLaserData,&laserData,sizeof(LaserMeasurement));
     //tu mozete robit s datami z lidaru.. napriklad najst prekazky, zapisat do mapy. naplanovat ako sa prekazke vyhnut.
     // ale nic vypoctovo narocne - to iste vlakno ktore cita data z lidaru
     updateLaserPicture=1;
     update();//tento prikaz prinuti prekreslit obrazovku.. zavola sa paintEvent funkcia
 
-
     return 0;
-
 }
 
 
@@ -497,9 +454,6 @@ void MainWindow::on_pushButton_2_clicked() //forward
 {
     //pohyb dopredu
     robot.setTranslationSpeed(500);
-//    speed = 0;
-//    robotAcceleration();
-
 }
 
 void MainWindow::on_pushButton_3_clicked() //back

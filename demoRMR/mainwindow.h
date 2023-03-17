@@ -19,7 +19,7 @@
 //#include "rplidar.h"
 
 #include "robot.h"
-#include "pid_controller.h"
+#include "p_controller_rotation.h"
 #include "p_controller_movement.h"
 
 
@@ -69,8 +69,10 @@ private slots:
     void movementToRight();
     void movementToLeft();
     void movementBackwards();
-    void robotAcceleration();
     void robotSlowdown();
+    void stopRobot();
+
+    void calculateShortestRotation(double correctRotation);
 
     void robotMovement(TKobukiData robotdata);
     double getRightOrientation();
@@ -133,7 +135,7 @@ private:
      double gyro;
      double gyroRad;
 
-    PIDController controller;
+    PControllerRotation controllerRotation;
     PControllerMovement controllerMove;
 
 
