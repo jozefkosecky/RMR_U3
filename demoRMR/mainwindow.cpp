@@ -15,12 +15,12 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    controllerRotation(10, 0.01),
+    controllerRotation(7.5, 0.01),
     controllerMove(7.5, 0.01, 500)
 {
     //tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
-    ipaddress="192.168.1.11"; //192.168.1.11 127.0.0.1
-//    ipaddress="127.0.0.1";
+//    ipaddress="192.168.1.11"; //192.168.1.11 127.0.0.1
+    ipaddress="127.0.0.1";
   //  cap.open("http://192.168.1.11:8000/stream.mjpg");
     ui->setupUi(this);
     datacounter=0;
@@ -156,22 +156,33 @@ void MainWindow::stopRobot(){
     isRobotMove = false;
 }
 
-void MainWindow::calculateShortestRotation(double correctRotation){
+double MainWindow::calculateShortestRotation(double correctRotation){
     //get difference between two angles
     if(gyroRad < correctRotation){
+        cout << "som 1" << endl;
         rightRotationAngle = (2*PI) - correctRotation + gyroRad;
         leftRotationAngle = correctRotation - gyroRad;
 
+        if(isConvertAngleLeft){
+            isConvertAngleLeft = false;
+        }
+
         if(rightRotationAngle < leftRotationAngle && !isCorrectRotation){
+            cout << "som 2" << endl;
             isConvertAngleRight = true;
         }
     }
     else{
+        cout << "som 3" << endl;
         leftRotationAngle = (2*PI) - gyroRad + correctRotation;
         rightRotationAngle = gyroRad - correctRotation;
 
+        if(isConvertAngleRight){
+            isConvertAngleRight = false;
+        }
 
         if(leftRotationAngle < rightRotationAngle && !isCorrectRotation){
+            cout << "som 4" << endl;
             isConvertAngleLeft = true;
         }
     }
@@ -191,6 +202,8 @@ void MainWindow::calculateShortestRotation(double correctRotation){
         }
         cout << "prepocet do lava: " << "correctRotation: " << correctRotation << "gyroRad: "<< gyroRad << endl;
     }
+
+    return correctRotation;
 }
 
 
@@ -203,7 +216,7 @@ void MainWindow::robotMovement(TKobukiData robotdata){
     cout << "correctRotation: " << correctRotation << "gyroRad: "<< gyroRad << endl;
     cout << "x_destination: " << x_destination << "y_destination: "<< y_destination << endl;
 
-    calculateShortestRotation(correctRotation);
+    correctRotation = calculateShortestRotation(correctRotation);
 
     // Update the control output based on the measured value
     double output = controllerRotation.Update(correctRotation, gyroRad);
@@ -222,7 +235,7 @@ void MainWindow::robotMovement(TKobukiData robotdata){
     }
     else{
         cout << "nezelane otocenie" << endl;
-        deadbandRotation = 0.01;
+        deadbandRotation = 0.02;
         isCorrectRotation = false;
     }
 
@@ -245,18 +258,13 @@ void MainWindow::robotMovement(TKobukiData robotdata){
             }
         }
         else{
-            if(isRobotRotate){
-                cout << "zastavujem rotaciu pred pohybom" << endl;
-                stopRobot();
-            }
-
             if((x_destination >= x - 2.5) && (x_destination <= x + 2.5) &&
                     (y_destination >= y - 2.5) && (y_destination <= y + 2.5)){
                 cout << "zastavujem pohyb" << endl;
                 stopRobot();
 
                 pointReached++;
-                if(pointReached < 3){
+                if(pointReached < 4){
                     x_destination = xArray[pointReached];
                     y_destination = yArray[pointReached];
                     distance = getDistanceToEnd();
@@ -358,30 +366,30 @@ void MainWindow::initData(TKobukiData robotdata){
     speed = 0;
 
     //stvorec
+    xArray[0] = 0;
+    xArray[1] = 40;
+    xArray[2] = 40;
+    xArray[3] = 0;
+    xArray[4] = 150;
+
+    yArray[0] = 40;
+    yArray[1] = 40;
+    yArray[2] = 0;
+    yArray[3] = 0;
+    yArray[4] = 350;
+
+    //trojuholnik
 //    xArray[0] = 0;
-//    xArray[1] = 150;
-//    xArray[2] = 150;
+//    xArray[1] = 0;
+//    xArray[2] = 0;
 //    xArray[3] = 0;
 //    xArray[4] = 150;
 
-//    yArray[0] = 250;
+//    yArray[0] = -20;
 //    yArray[1] = 250;
 //    yArray[2] = 0;
 //    yArray[3] = 0;
 //    yArray[4] = 350;
-
-    //trojuholnik
-    xArray[0] = 250;
-    xArray[1] = 0;
-    xArray[2] = 0;
-    xArray[3] = 0;
-    xArray[4] = 150;
-
-    yArray[0] = 250;
-    yArray[1] = 250;
-    yArray[2] = 0;
-    yArray[3] = 0;
-    yArray[4] = 350;
 
     pointReached = 0;
     x_destination = xArray[pointReached];

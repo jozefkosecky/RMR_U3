@@ -72,7 +72,7 @@ private slots:
     void robotSlowdown();
     void stopRobot();
 
-    void calculateShortestRotation(double correctRotation);
+    double calculateShortestRotation(double correctRotation);
 
     void robotMovement(TKobukiData robotdata);
     double getRightOrientation();
