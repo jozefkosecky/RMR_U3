@@ -9,6 +9,7 @@
 #include "p_controller_movement.h"
 #include <fstream>
 #include <string>
+using namespace std;
 ///Jozef Kosecky, Peter Dobias
 
 
@@ -76,7 +77,48 @@ void MainWindow::paintEvent(QPaintEvent *event)
                 if(rect.contains(xp,yp))//ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
                     painter.drawEllipse(QPoint(xp, yp),2,2);
             }
+
+            if(!isRobotRotate){
+
+                updateMap();
+            }
+
         }
+    }
+}
+
+void MainWindow::updateMap(){
+    cout << "zaciatok" << endl;
+
+//    copyOfLaserData.numberOfScans
+    for(int k=0;k<copyOfLaserData.numberOfScans/*360*/;k++)
+    {
+        if(copyOfLaserData.Data[k].scanQuality != 0){
+            continue;
+        }
+        int grid_size = 10; // Grid size in pixels
+        int grid_offset = 60; // Grid offset in pixels
+
+        int dist=copyOfLaserData.Data[k].scanDistance/10;
+
+        if(dist <= 15){
+            continue;
+        }
+        double angleRad = (((360-copyOfLaserData.Data[k].scanAngle)*PI)/180.0);
+
+//        cout << "x robot: " << x << " y robot: " << y << " angleRad: " << angleRad << " gyroRadMap: " << gyroRadMap << endl;
+
+        double xr = x + dist*cos(gyroRadMap + angleRad);
+        double yr = y + dist*sin(gyroRadMap + angleRad);
+
+        int x_wall = xr/grid_size + grid_offset;
+        int y_wall = yr/grid_size + grid_offset;
+
+
+        if((y_wall > 0 && y_wall < numberOfSqareInMap) && (x_wall > 0 && x_wall < numberOfSqareInMap)){
+             map[y_wall][x_wall] = "*";
+        }
+
     }
 }
 
@@ -98,7 +140,9 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
         initData(robotdata);
     }
 
-    robotMovement(robotdata);
+    if(starMovement){
+        robotMovement(robotdata);
+    }
 
     ///tu mozete robit s datami z robota
     /// ale nic vypoctovo narocne - to iste vlakno ktore cita data z robota
@@ -159,7 +203,6 @@ void MainWindow::stopRobot(){
 double MainWindow::calculateShortestRotation(double correctRotation){
     //get difference between two angles
     if(gyroRad < correctRotation){
-        cout << "som 1" << endl;
         rightRotationAngle = (2*PI) - correctRotation + gyroRad;
         leftRotationAngle = correctRotation - gyroRad;
 
@@ -168,12 +211,10 @@ double MainWindow::calculateShortestRotation(double correctRotation){
         }
 
         if(rightRotationAngle < leftRotationAngle && !isCorrectRotation){
-            cout << "som 2" << endl;
             isConvertAngleRight = true;
         }
     }
     else{
-        cout << "som 3" << endl;
         leftRotationAngle = (2*PI) - gyroRad + correctRotation;
         rightRotationAngle = gyroRad - correctRotation;
 
@@ -182,7 +223,6 @@ double MainWindow::calculateShortestRotation(double correctRotation){
         }
 
         if(leftRotationAngle < rightRotationAngle && !isCorrectRotation){
-            cout << "som 4" << endl;
             isConvertAngleLeft = true;
         }
     }
@@ -264,16 +304,24 @@ void MainWindow::robotMovement(TKobukiData robotdata){
                 stopRobot();
 
                 pointReached++;
-                if(pointReached < 4){
-                    x_destination = xArray[pointReached];
-                    y_destination = yArray[pointReached];
-                    distance = getDistanceToEnd();
+                if(!manualNavigation){
+                    if(pointReached < 9){
+                        x_destination = xArray[pointReached];
+                        y_destination = yArray[pointReached];
+                        distance = getDistanceToEnd();
+                    }
+                    else{
+                       isStop = true;
+                    }
                 }
                 else{
-                   isStop = true;
+                    starMovement = false;
                 }
+
+                isRobotRotate = false;
             }
             else{
+                isRobotRotate = false;
                 double outputMove = controllerMove.Update(0, distanceToEnd);
                 cout << "Zrychlujem" << endl;
                 cout << "distance: " << distance << "distanceToEnd: "<< distanceToEnd << endl;
@@ -325,6 +373,7 @@ void MainWindow::calculateXY(TKobukiData robotdata){
     gyro = robotdata.GyroAngle/100 - gyroStart;
     double delta_distance  = (distanceLW + distanceRW) / 2.0;
     gyroRad = (((gyro)*PI)/180.0);
+    gyroRadMap = gyroRad;
 
     cout << "gyro: " << gyroRad << endl;
 
@@ -334,6 +383,7 @@ void MainWindow::calculateXY(TKobukiData robotdata){
     // pretecenie gyro
     if(gyroRad < 0){
         gyroRad += 2*PI;
+        gyroRadMap = gyroRad;
     }
     x = x + (delta_distance  * cos(gyroRad))*100;
     y = y + (delta_distance  * sin(gyroRad))*100;
@@ -366,17 +416,17 @@ void MainWindow::initData(TKobukiData robotdata){
     speed = 0;
 
     //stvorec
-    xArray[0] = 0;
-    xArray[1] = 40;
-    xArray[2] = 40;
-    xArray[3] = 0;
-    xArray[4] = 150;
+//    xArray[0] = 0;
+//    xArray[1] = 200;
+//    xArray[2] = 0;
+//    xArray[3] = 0;
+//    xArray[4] = 150;
 
-    yArray[0] = 40;
-    yArray[1] = 40;
-    yArray[2] = 0;
-    yArray[3] = 0;
-    yArray[4] = 350;
+//    yArray[0] = 300;
+//    yArray[1] = 325;
+//    yArray[2] = -1;
+//    yArray[3] = 0;
+//    yArray[4] = 350;
 
     //trojuholnik
 //    xArray[0] = 0;
@@ -391,6 +441,27 @@ void MainWindow::initData(TKobukiData robotdata){
 //    yArray[3] = 0;
 //    yArray[4] = 350;
 
+    //Prehladavanie mapy
+    xArray[0] = 0;
+    xArray[1] = 430;
+    xArray[2] = 260;
+    xArray[3] = 260;
+    xArray[4] = 120;
+    xArray[5] = 260;
+    xArray[6] = 260;
+    xArray[7] = 480;
+    xArray[8] = 480;
+
+    yArray[0] = 300;
+    yArray[1] = 370;
+    yArray[2] = 370;
+    yArray[3] = 150;
+    yArray[4] = 150;
+    yArray[5] = 150;
+    yArray[6] = 50;
+    yArray[7] = 50;
+    yArray[8] = 175;
+
     pointReached = 0;
     x_destination = xArray[pointReached];
     y_destination = yArray[pointReached];
@@ -400,6 +471,7 @@ void MainWindow::initData(TKobukiData robotdata){
     gyroStart = robotdata.GyroAngle/100;
     gyro = 0;
     gyroRad = 0;
+    gyroRadMap = 0;
 
     isConvertAngleRight = false;
     isConvertAngleLeft = false;
@@ -407,6 +479,26 @@ void MainWindow::initData(TKobukiData robotdata){
     isStop = false;
     isRobotMove = false;
     isRobotRotate = false;
+
+    numberOfSqareInMap = 120;
+
+    //MAP
+        for (int i = 0; i < numberOfSqareInMap; i++) {
+            for (int j = 0; j < numberOfSqareInMap; j++) {
+                map[i][j] = " ";
+            }
+        }
+
+    //    for (int i = 0; i < 120; i++) {
+    //        for (int j = 0; j < 120; j++) {
+    //            std::cout << map[i][j] << " ";
+    //        }
+    //        std::cout << std::endl;
+    //    }
+
+    starMovement = false;
+    manualNavigation = false;
+
     init = false;
 }
 
@@ -474,21 +566,74 @@ void MainWindow::on_pushButton_3_clicked() //back
 
 void MainWindow::on_pushButton_6_clicked() //left
 {
+    isRobotRotate = true;
 robot.setRotationSpeed(3.14159/2);
 
 }
 
 void MainWindow::on_pushButton_5_clicked()//right
 {
+    isRobotRotate = true;
 robot.setRotationSpeed(-3.14159/2);
+}
+
+void MainWindow::on_pushButton_10_clicked()//right
+{
+    starMovement = true;
+    manualNavigation = false;
+}
+
+void MainWindow::on_pushButton_11_clicked()//right
+{
+    cout << "nova mapa" << endl;
+
+    std::ofstream outfile("C:\\Users\\jkose\\Documents\\vysoka skola\\4.rocnik\\2.semester\\RMR\\mapa2.txt");
+
+//    // iterate through the rows of the array and swap them
+//    for (int i = 0; i < numberOfSqareInMap-1; i++) {
+//        for (int j = 0; j < numberOfSqareInMap; j++) {
+//            tempMap[j] = map[i][j];
+//            map[i][j] = map[numberOfSqareInMap-1-i][j];
+//            map[numberOfSqareInMap-1-i][j] = tempMap[j];
+//        }
+//    }
+
+
+
+    // Write the array contents to the file
+    for (int i = numberOfSqareInMap; i > 0; i--) {
+        for (int j = 0; j < numberOfSqareInMap; j++) {
+            outfile << map[i][j] << " ";
+        }
+        outfile << std::endl;
+    }
+
+    // Close the output file
+    outfile.close();
+
+    cout<<"zapisal som"<<endl;
+}
+
+void MainWindow::on_pushButton_12_clicked() //forward
+{
+
+    //pohyb dopredu
+    pointReached = 0;
+    QString x = ui->lineEdit_6->text();
+    QString y = ui->lineEdit_5->text();
+    x_destination = x.toInt();
+    y_destination = y.toInt();
+    isStop = false;
+    starMovement = true;
+    manualNavigation = true;
 }
 
 void MainWindow::on_pushButton_4_clicked() //stop
 {
     robot.setTranslationSpeed(0);
     isStop = true;
+    isRobotRotate = false;
 }
-
 
 
 

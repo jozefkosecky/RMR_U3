@@ -62,6 +62,10 @@ private slots:
 
     void on_pushButton_4_clicked();
 
+    void on_pushButton_10_clicked();
+    void on_pushButton_11_clicked();
+    void on_pushButton_12_clicked();
+
     void on_pushButton_clicked();
     void getNewFrame();
 
@@ -79,6 +83,8 @@ private slots:
     double getDistanceToEnd();
     void calculateXY(TKobukiData robotdata);
     void initData(TKobukiData robotdata);
+
+    void updateMap();
 
 private:
 
@@ -124,8 +130,8 @@ private:
      double leftRotationAngle;
 
      double deadbandRotation;
-     int xArray[5];
-     int yArray[5];
+     int xArray[9];
+     int yArray[9];
 
      int pointReached;
 
@@ -134,9 +140,17 @@ private:
      double gyroStart;
      double gyro;
      double gyroRad;
+     double gyroRadMap;
 
     PControllerRotation controllerRotation;
     PControllerMovement controllerMove;
+
+    bool starMovement;
+    string map[120][120];
+    int numberOfSqareInMap;
+    string tempMap[120];
+
+    bool manualNavigation;
 
 
 public slots:
