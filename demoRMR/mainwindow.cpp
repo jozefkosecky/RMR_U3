@@ -7,6 +7,8 @@
 #include <cmath>
 #include "p_controller_rotation.h"
 #include "p_controller_movement.h"
+#include <fstream>
+#include <string>
 ///Jozef Kosecky, Peter Dobias
 
 
