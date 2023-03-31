@@ -96,7 +96,7 @@ void MainWindow::updateMap(){
         if(copyOfLaserData.Data[k].scanQuality != 0){
             continue;
         }
-        int grid_size = 10; // Grid size in pixels
+        int grid_size = 5; // Grid size in pixels
         int grid_offset = 60; // Grid offset in pixels
 
         int dist=copyOfLaserData.Data[k].scanDistance/10;
@@ -116,7 +116,7 @@ void MainWindow::updateMap(){
 
 
         if((y_wall > 0 && y_wall < numberOfSqareInMap) && (x_wall > 0 && x_wall < numberOfSqareInMap)){
-             map[y_wall][x_wall] = "*";
+             map[y_wall][x_wall] = '*';
         }
 
     }
@@ -305,7 +305,7 @@ void MainWindow::robotMovement(TKobukiData robotdata){
 
                 pointReached++;
                 if(!manualNavigation){
-                    if(pointReached < 9){
+                    if(pointReached < 10){
                         x_destination = xArray[pointReached];
                         y_destination = yArray[pointReached];
                         distance = getDistanceToEnd();
@@ -326,7 +326,7 @@ void MainWindow::robotMovement(TKobukiData robotdata){
                 cout << "Zrychlujem" << endl;
                 cout << "distance: " << distance << "distanceToEnd: "<< distanceToEnd << endl;
 
-                speed = max((50), min((500), std::abs(outputMove)));
+                speed = max((50), min((300), std::abs(outputMove)));
                 cout << "speed: " << speed << endl;
                 movementForward(speed);
                 isRobotMove = true;
@@ -443,24 +443,26 @@ void MainWindow::initData(TKobukiData robotdata){
 
     //Prehladavanie mapy
     xArray[0] = 0;
-    xArray[1] = 430;
-    xArray[2] = 260;
-    xArray[3] = 260;
-    xArray[4] = 120;
-    xArray[5] = 260;
-    xArray[6] = 260;
-    xArray[7] = 480;
-    xArray[8] = 480;
+    xArray[1] = 110;
+    xArray[2] = 110;
+    xArray[3] = 270;
+    xArray[4] = 270;
+    xArray[5] = 400;
+    xArray[6] = 270;
+    xArray[7] = 270;
+    xArray[8] = 475;
+    xArray[9] = 475;
 
     yArray[0] = 300;
-    yArray[1] = 370;
-    yArray[2] = 370;
-    yArray[3] = 150;
-    yArray[4] = 150;
-    yArray[5] = 150;
-    yArray[6] = 50;
-    yArray[7] = 50;
-    yArray[8] = 175;
+    yArray[1] = 300;
+    yArray[2] = 155;
+    yArray[3] = 155;
+    yArray[4] = 360;
+    yArray[5] = 360;
+    yArray[6] = 360;
+    yArray[7] = 30;
+    yArray[8] = 30;
+    yArray[9] = 160;
 
     pointReached = 0;
     x_destination = xArray[pointReached];
@@ -480,14 +482,17 @@ void MainWindow::initData(TKobukiData robotdata){
     isRobotMove = false;
     isRobotRotate = false;
 
-    numberOfSqareInMap = 120;
+    numberOfSqareInMap = 240;
+
+    cout << "nepadol som" << endl;
 
     //MAP
         for (int i = 0; i < numberOfSqareInMap; i++) {
             for (int j = 0; j < numberOfSqareInMap; j++) {
-                map[i][j] = " ";
+                map[i][j] = ' ';
             }
         }
+    cout << "nepadol som2" << endl;
 
     //    for (int i = 0; i < 120; i++) {
     //        for (int j = 0; j < 120; j++) {

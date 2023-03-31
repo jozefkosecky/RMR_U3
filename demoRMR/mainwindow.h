@@ -130,8 +130,8 @@ private:
      double leftRotationAngle;
 
      double deadbandRotation;
-     int xArray[9];
-     int yArray[9];
+     int xArray[10];
+     int yArray[10];
 
      int pointReached;
 
@@ -146,7 +146,7 @@ private:
     PControllerMovement controllerMove;
 
     bool starMovement;
-    string map[120][120];
+    char map[240][240];
     int numberOfSqareInMap;
     string tempMap[120];
 
