@@ -101,7 +101,7 @@ void MainWindow::updateMap(){
 
         int dist=copyOfLaserData.Data[k].scanDistance/10;
 
-        if(dist <= 15){
+        if(dist <= 15 || dist > 300 || (dist >= 64 && dist <= 70)){
             continue;
         }
         double angleRad = (((360-copyOfLaserData.Data[k].scanAngle)*PI)/180.0);
@@ -605,11 +605,24 @@ void MainWindow::on_pushButton_11_clicked()//right
 
 
 
+
     // Write the array contents to the file
-    for (int i = numberOfSqareInMap; i > 0; i--) {
+    for (int i = numberOfSqareInMap-1; i >= 0; i--) {
         for (int j = 0; j < numberOfSqareInMap; j++) {
-            outfile << map[i][j] << " ";
+            if(map[i][j] >= 0 && map[i][j] <= 1){
+//                outfile << ' ' << " ";
+                outfile << " ";
+//                outfile << i << j;
+            }
+            else{
+//                outfile << '*' << " ";
+                outfile << 1;
+//                           outfile << i << j;
+            }
+            cout << map[i][j];
         }
+
+        cout << endl;
         outfile << std::endl;
     }
 
